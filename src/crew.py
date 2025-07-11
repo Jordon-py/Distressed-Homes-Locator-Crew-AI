@@ -13,7 +13,7 @@ from crewai_tools import SerperDevTool
 import os
 import sys
 import yaml
-from crewai.llms import LLM
+from crewai import LLM
 
 
 # =========================
@@ -29,6 +29,8 @@ load_dotenv(override=True)
 @CrewBase
 class Gangshit():
     """Gangshit crew for web application development"""
+    agents = List[BaseAgent]
+    tasks = List[Task]
 
     agents_config = 'config/agents.yaml'
     tasks_config = 'config/tasks.yaml'
@@ -36,11 +38,12 @@ class Gangshit():
     # =========================
     # 2. INITIALIZATION
     # =========================
+    @staticmethod
     def _setup_llms(self) -> tuple:
         """Setup and return configured LLM instances"""
-        llama_model = os.getenv("OLLAMA_LLAMA3", "llama3.2")
+        llama_model = os.getenv("OLLAMA_LLAMA3", "llama3.2:latest")
         gemma3_model = os.getenv("OLLAMA_GEMMA3", "gemma3:latest")
-        deepseek_model = os.getenv("OLLAMA_DEEPSEEK", "deepseek:latest")
+        deepseek_model = os.getenv("OLLAMA_DEEPSEEK", "deepseek-r1:1.5b-qwen-distill-q8_0")
         
         print(f"🔧 Using Ollama Llama3.2: {llama_model}")
         print(f"🔧 Using Ollama Gemma3: {gemma3_model}")
@@ -49,46 +52,25 @@ class Gangshit():
         llama3 = LLM(
             model=llama_model,
             base_url="http://localhost:11434",
-            stream=True,
         )
         gemma3 = LLM(
             model=gemma3_model,
             base_url="http://localhost:11434",
-            stream=True,
         )
         deepseek = LLM(
             model=deepseek_model,
             base_url="http://localhost:11434",
-            stream=True,
         )
 
         return llama3, gemma3, deepseek
+    setup_llms = _setup_llms()
     
-    
-
-    def _load_agents_config(self, agents_config) -> Dict[str, Any]:
-        """Load agents configuration from YAML file"""
-        try:
-            with open(self.agents_config, 'r') as file:
-                return yaml.safe_load(file)
-        except FileNotFoundError:
-            print(f"⚠️  Warning: {self.agents_config} not found. Using default configuration.")
-            return {}
-
-    def _load_tasks_config(self, tasks_config) -> Dict[str, Any]:
-        """Load tasks configuration from YAML file"""
-        try:
-            with open(self.tasks_config_path, 'r') as file:
-                return yaml.safe_load(file)
-        except FileNotFoundError:
-            print(f"⚠️  Warning: {self.tasks_config_path} not found. Using default configuration.")
-            return {}
 
     def __init__(self):
         """Initialize the crew with proper configuration"""
         self.llama3, self.gemma3, self.deepseek = self._setup_llms()
-        self._agents_config = self._load_agents_config()
-        self._tasks_config = self._load_tasks_config()
+        self.agents_config = self.agents_config
+        self.tasks_config = self.tasks_config
 
     @before_kickoff
     def before_kickoff(self, inputs):
@@ -112,7 +94,7 @@ class Gangshit():
         try:
             return Agent(
                 config=self.agents_config['researcher'],
-                llm=self.OLLAMA_GEMMA3,
+                llm=self.gemma3,
                 verbose=True,
                 tools=[SerperDevTool()]  # Add more tools if needed
             )
@@ -124,7 +106,7 @@ class Gangshit():
     def analyst(self) -> Agent:
         """Analysis agent for processing information"""
         return Agent(
-            config=self._agents_config.get('analyst', {}),
+            config=self.agents_config.get('analyst', {}),
             verbose=True,
             llm=self.gemma3,
         )
@@ -133,7 +115,7 @@ class Gangshit():
     def coding_agent(self) -> Agent:
         """Coding agent for development tasks"""
         return Agent(
-            config=self._agents_config.get('coding_agent', {}),
+            config=self.agents_config.get('coding_agent', {}),
             verbose=True,
             llm=self.deepseek,
         )
@@ -142,7 +124,7 @@ class Gangshit():
     def overlord(self) -> Agent:
         """Overlord agent for coordination and management"""
         return Agent(
-            config=self._agents_config.get('overlord', {}),
+            config=self.agents_config.get('overlord', {}),
             verbose=True,
             llm=self.llama3,
         )
@@ -156,7 +138,8 @@ class Gangshit():
         try:
             return Task(
                 config=self.tasks_config['research_task'],
-                output_file='results/research_report.md'
+                output_file='results/research_report.md',
+                tools=[SerperDevTool()]
             )
         except Exception as e:
             print(f"[ERROR] Failed to configure 'research_task': {e}")
@@ -207,21 +190,6 @@ class Gangshit():
             print(f"[ERROR] Failed to configure 'overlord_task': {e}")
             raise
 
-#    @crew
-#    def gangshit_crew(self) -> Crew:
-#        """Creates the Gangshit crew with proper configuration"""
-#        return Crew(
-#            agents=[self.researcher(), self.analyst(), self.coding_agent(), self.overlord()],
-#           tasks=[self.researcher_task(), self.analyst_task(), self.coding_task(), self.overlord_task()],
-#          verbose=True,
-#         process=Process.hierarchical,
-#    )
-# 
-#    return Task(
-#            config=self.tasks_config['overlord_task'],
-#            output_file='results/overlord_report.md'
-#        )
-    
 
     # =========================
     # 6. CREW ASSEMBLY
@@ -235,13 +203,15 @@ class Gangshit():
         print("[CrewAI] Assembling crew (hierarchical process)...")
 
         return Crew(
-            agents=self.agents, # Automatically created by the @agent decorator
-            tasks=self.tasks, # Automatically created by the @task decorator
+            agents= self.agents, # Automatically created by the @agent decorator
+            tasks= self.tasks, # Automatically created by the @task decorator
             # process=Process.sequential,
             
             verbose=True,
             process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
             output_file='results/gangshit_report.md', # Output file for the crew's results
+            manager_llm=self.llama3,  # Use Llama3 for crew management
+            tools=[SerperDevTool()],  # Add any additional tools here
             
         )
 

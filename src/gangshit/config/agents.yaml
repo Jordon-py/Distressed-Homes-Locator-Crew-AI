@@ -1,108 +1,59 @@
-researcher:
-  role: Specialist Research Investigator – {topic}
+research_task:
+  agent: researcher
+  input: "{topic}"
   description: >
-    Specialist research agent leveraging Dynamic Tree of Thought (D-ToT) and cross-agent memory.
-  goal: >
-    Curate up-to-date, domain-specific insights on {topic} that fully address {requirements}.
-    Use explicit D-ToT exploration, cross-check facts, and auto-cite sources.
-    Flag uncertainties for analyst review.
-  backstory: >
-    Former investigative journalist and AI-enabled OSINT specialist.
-  allow_delegation: true
-  inject_date: true
-  max_iter: 3
-  max_execution_time: 5000
-  max_retry_limit: 2
-  system_template: |
-    Agent Name: researcher
-    Challenge: Research {topic} with D-ToT, API checks, and source auto-citation.
-    Intent: Meet {requirements} for {topic} with D-ToT, API checks, and source auto-citation.
-  accept_feedback_from:
-    - analyst
-    - coding_agent
-    - overlord
-  model:
-    provider: ollama
-    name: llama3.2:latest
+    Research {topic} using diverse, authoritative sources. Summarize key findings, trends, and stakeholders.
+    Cite all data. Output a structured Markdown report for the analyst.
+  output_format: Markdown
+  handoff: analyst
+  expected_output: >
+    - Executive summary (2–3 paragraphs)
+    - Key findings with citations
+    - Trends and stakeholder analysis
+    - Actionable recommendations
+    - Data tables/statistics
 
-analyst:
-  role: Technical Architecture Analyst – {topic}
+analyst_task:
+  agent: analyst
+  input: research_task output
   description: >
-    Technical architecture analyst for risk-aware design using explicit D-ToT and collaborative feedback.
-  goal: >
-    Design, diagram, and critique architectures for {topic} meeting {requirements}.
-    Map alternatives, assess risks, justify decisions, integrate agent feedback.
-  backstory: >
-    ML/UX architect skilled in cross-functional system diagrams and automated risk evaluation.
-  multimodal: true
-  allow_delegation: true
-  inject_date: true
-  max_iter: 3
-  max_execution_time: 5000
-  system_template: |
-    Agent Name: analyst
-    Challenge: Deliver D-ToT-mapped architectures for {topic} and {requirements} with QA triggers and cross-agent feedback.
-  accept_feedback_from:
-    - overlord
-    - coding_agent
-    - researcher
-  model:
-    provider: ollama
-    name: gemma3:latest
+    Review research and draft a technical architecture based on {topic} and {requirements}. Assess feasibility, risks, and technical options,
+    focusing on scalability, security, and maintainability. Output a Markdown spec for the coding agent.
+  output_format: Markdown
+  handoff: coding_agent
+  expected_output: >
+    - Architecture diagram (text description)
+    - Technology stack rationale
+    - Risk assessment matrix
+    - Implementation timeline/milestones
+    - Resource constraints
 
-coding_agent:
-  role: Senior ML/Full-Stack Engineer – {topic}
+coding_task:
+  agent: coding_agent
+  input: analyst_task output
   description: >
-    Senior ML/Full-Stack engineer deploying secure, modular apps via explicit D-ToT and workflow chaining.
-  goal: >
-    Build, test, and deliver {topic} applications matching {requirements}, with explicit ToT logs and self-auditing.
-    Request clarification from analyst or researcher if requirements are ambiguous.
-  backstory: >
-    Polyglot engineer (Python/JS/Go/CSS) with scalable ML pipeline and code review expertise.
-  multimodal: true
-  allow_delegation: true
-  inject_date: true
-  workflow_chaining: true
-  max_iter: 3
-  max_execution_time: 5000
-  max_retry_limit: 3
-  observability: true
-  system_template: |
-    Agent Name: coding_agent
-    Challenge: Deliver {topic} app (per {requirements}) with modular ToT logs, chaining, and reflexive security checks.
-  accept_feedback_from:
-    - overlord
-    - analyst
-    - researcher
-  model:
-    provider: ollama
-    name: deepseek-r1:1.5b-qwen-distill-q8_0
-  
+    Build a production-grade application per specification. Ensure code quality, security, test coverage, {requirements}, and full documentation.
+    Deliver complete codebase to the overlord.
+  output_format: code files
+  handoff: overlord
+  expected_output: >
+    - Application code
+    - Unit/integration tests
+    - README (setup/deploy)
+    - API docs (if applicable)
+    - Code metrics/security audit
 
-overlord:
-  role: Project Lead & QA Orchestrator – {topic}
+overlord_task:
+  agent: overlord
+  input: coding_task output + analyst_task output + research_task output
   description: >
-    Project Lead & QA Orchestrator ensuring end-to-end integrity and workflow self-healing.
-  goal: >
-    Oversee all agent workflows for {topic} to meet {requirements} with continuous QA and D-ToT/reflexion compliance.
-    Auto-escalate stuck/ambiguous branches, trigger self-healing, integrate audit logs.
-  backstory: >
-    ML/Full-Stack lead specializing in pipeline orchestration, conflict resolution, and agent optimization.
-  multimodal: true
-  allow_delegation: true
-  inject_date: true
-  workflow_self_healing: true
-  max_iter: 7
-  max_execution_time: 6000
-  max_retry_limit: 3
-  observability: true
-  system_template: |
-    Agent Name: overlord
-    Challenge: Ensure end-to-end pipeline QA for {topic}, auto-heal failures, escalate unresolved issues, maintain D-ToT/reflexion standards.
-  accept_feedback_from:
-    - researcher
-    - analyst
-    - coding_agent
-  model:
-    provider: ollama
-    name: gemma3:latest
+    Integrate all outputs, perform QA, and compile a final deliverable.
+    Confirm project requirements and document recommendations for ongoing maintenance.
+  output_format: Markdown
+  handoff: client/stakeholders
+  expected_output: >
+    - Project executive summary
+    - QA checklist/results
+    - Integration testing log
+    - Deployment assessment
+    - Maintenance/future roadmap
