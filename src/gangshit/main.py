@@ -1,33 +1,21 @@
 #!/usr/bin/env python
+"""
+Main entry point for the Gangshit CrewAI project.
+This file should be used as the primary entry point for the application.
+"""
 import sys
 import warnings
 from datetime import datetime
-
-try:
-    from src import Gangshit
-except ImportError:
-    # Fallback: Try importing from current directory structure
-    try:
-        from src.gangshit import Gangshit
-    except ImportError as e:
-        print(f"❌ Failed to import Gangshit crew: {e}")
-        print("💡 Ensure crew.py is in the correct location (src/crew.py or ./crew.py)")
-        sys.exit(1)
+from .crew import Gangshit
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
-
-# This main file is intended to be a way for you to run your
-# crew locally, so refrain from adding unnecessary logic into this file.
-# Replace with inputs you want to test with, it will automatically
-# interpolate any tasks and agents information
 
 def run():
     """
     Run the crew with comprehensive error handling.
     """
-
     inputs = {
-        'topic':"""Build a cross-platform desktop application that trains powerful ML and RL models to predict forex currency pair movements (e.g. EUR/USD, GBP/JPY), visualizes training and backtesting metrics, supports backtesting on historical data, provides explanatory tooltips suitable for both beginners and experts, and enables model export for real-world deployment.""",
+        'topic': """Build a cross-platform desktop application that trains powerful ML and RL models to predict forex currency pair movements (e.g. EUR/USD, GBP/JPY), visualizes training and backtesting metrics, supports backtesting on historical data, provides explanatory tooltips suitable for both beginners and experts, and enables model export for real-world deployment.""",
         'requirements': [
             "Train both supervised ML (e.g. LSTM, random forest) and reinforcement learning (e.g. DQN, PPO) models using at least 10 years of historical forex data.",
             "Visualize training metrics (loss, accuracy, reward) in interactive charts (using Plotly/Matplotlib).",
@@ -41,7 +29,7 @@ def run():
     
     try:
         print("🚀 Starting Gangshit crew...")
-        crew = Gangshit().self.gangshit_crew()
+        crew = Gangshit().gangshit()
         result = crew.kickoff(inputs=inputs)
         print("✅ Crew execution completed!")
         print(f"📊 Result: {result}")
@@ -55,12 +43,11 @@ def run():
         print("💡 Check configuration files in src/gangshit/config/")
         return None
     except Exception as e:
-        print(f"❌ Error occurred: {e}")
+        print(f"❌ Unexpected Error: {e}")
         print(f"🔍 Error Type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
-        raise Exception(f"An error occurred while running the crew: {e}")
-
+        return None
 
 def train():
     """
@@ -72,7 +59,6 @@ def train():
     }
     try:
         Gangshit().gangshit_crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
-
     except Exception as e:
         raise Exception(f"An error occurred while training the crew: {e}")
 
@@ -82,7 +68,6 @@ def replay():
     """
     try:
         Gangshit().gangshit_crew().replay(task_id=sys.argv[1])
-
     except Exception as e:
         raise Exception(f"An error occurred while replaying the crew: {e}")
 
@@ -97,10 +82,8 @@ def test():
     
     try:
         Gangshit().gangshit_crew().test(n_iterations=int(sys.argv[1]), eval_llm=sys.argv[2], inputs=inputs)
-
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
-
 
 if __name__ == "__main__":
     run()

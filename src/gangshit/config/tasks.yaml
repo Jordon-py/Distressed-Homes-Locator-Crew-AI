@@ -1,87 +1,73 @@
-research_task:
-  agent: researcher
-  description: |
-    Research {topic} by gathering up-to-date, structured CSV data and a detailed Markdown narrative summary fulfilling {requirements}.
-    Employ WebSearchTool for live web data, FileReadTool for trusted domain docs, and integrate numeric/graphical data as needed.
-    Apply D-ToT with explicit branch mapping, cross-source validation, and reflexion at each step.
-    Flag data gaps for analyst review.
-    Maintain a detailed context memory for follow-up cycles.
-  expected_output: |
-    Comprehensive research deliverable:
-      - Structured CSV dataset (with data provenance/links)
-        - Expected CSV schema: "source,title,date,value,provenance_url"
-        - Example:
-            source,title,date,value,provenance_url
-            ExampleSite,Example Data,2024-06-01,123,https://examplesite.com/data
-      - Markdown summary with insights/key findings
-      - Explicit ToT branch map
-      - Reflexion and self-critique log
-      - Calculations/charts for {topic} {requirements}
-  allow_delegation: true
-  accept_feedback_from:
-    - analyst
-    - coding_agent
-    - overlord
+# config/tasks.yaml
+tasks:
+  research_task:
+    agent: researcher
+    input: "{topic}"
+    description: >
+      Research {topic} using trusted, authoritative sources.
+      Synthesize findings, trends, and stakeholder insights.
+      Output a structured, source-cited Markdown report for the analyst.
+    expected_output:
+      format: markdown
+      contents:
+        - executive_summary: "Concise overview (2–3 paragraphs)"
+        - findings: "Key data and trends, with citations (2 or 3 sentences,+ e.g., [source](url))"
+        - stakeholders: "Major entities and influences"
+        - recommendations: "Next-step actions (e.g., give info to analyst_task)"
+        - tables: "Data tables and relevant stats"
+    handoff_to: analyst
+    async: false
 
-analyst_task:
-  agent: analyst
-  description: |
-    Analyze research outputs on {topic} for completeness, quality, and risk relative to {requirements}.
-    Construct risk-aware system architecture and performance specs.
-    Provide feedback to researcher; enable collaborative review with coding_agent.
-    Overlord may assign additional tasks.
-  expected_output: |
-    Technical architecture specification in Markdown:
-      - System/component diagrams
-      - Risk matrix (quantitative/qualitative)
-      - D-ToT branch map
-      - Review feedback summary
-  allow_delegation: true
-  accept_feedback_from:
-    - researcher
-    - coding_agent
-    - overlord
+  analyst_task:
+    agent: analyst
+    input_from: research_task
+    description: >
+      Analyze research report. Develop technical architecture with system diagrams,
+      stack choices (with rationale), and risk matrix. Emphasize scalability, security, and maintainability.
+      Deliver Markdown spec to coding_agent.
+    expected_output:
+      format: markdown
+      contents:
+        - architecture: "Textual system diagrams"
+        - stack: "Technology recommendations"
+        - risks: "Assessment matrix"
+        - timeline: "Implementation milestones"
+        - resources: "Required resources/constraints"
+    handoff_to: coding_agent
+    async: false
 
+  coding_task:
+    agent: coding_agent
+    input_from: analyst_task
+    description: >
+      Build a production-ready application per specs.
+      Ensure high code quality, test coverage, documentation, and deployment instructions.
+      Deliver full codebase to overlord.
+    expected_output:
+      format: files
+      contents:
+        - application: "Production code"
+        - readme: "Setup and deployment"
+        - api_docs: "If applicable"
+        - metrics: "Code quality/security audit"
+    handoff_to: overlord
+    async: false
 
-coding_task:
-  agent: coding_agent
-  description: |
-    Implement a robust desktop/web app regarding {topic} fulfilling {requirements} using a clearly defined backend stack (choose from Express.js, Django, or Python FastAPI) and a React.jsx frontend.
-    Reflexively audit major decisions before finalizing the codebase.
-    Support CI and automated QA/unit testing.
-    Collaborate with analyst on clarifications/optimizations.
-  expected_output: |
-    Production-ready codebase with:
-      - Inline/summary documentation
-      - Modularized code structure
-      - React.jsx frontend
-      - Compliance report for {requirements}
-  allow_delegation: true
-  accept_feedback_from:
-    - analyst
-    - researcher
-    - overlord
-
-overlord_task:
-  agent: overlord
-  description: |
-    Orchestrate and validate all outputs for {topic} against {requirements}.
-    Aggregate ToT/reflexion logs, run TestRunnerTool for QA/coverage, synthesize observability outputs.
-    Monitor for unresolved/escalated issues and initiate workflow self-healing or human escalation if needed.
-    Produce final compliance report and knowledge base update.
-    Assign additional tasks as necessary.
-  expected_output: |
-    Orchestration & QA deliverable including:
-      - Aggregated ToT/reflexion/QA logs
-      - QA metrics and test results
-      - Observability dashboard (status, errors, coverage)
-      - Full compliance report
-      - Lessons learned and workflow update
-  async_execution: true
-  allow_delegation: true
-  accept_feedback_from:
-    - researcher
-    - analyst
-    - coding_agent
-    - overlord
-
+  overlord_task:
+    agent: overlord
+    input_from: coding_task + analyst_task + research_task
+    description: >
+      Overlord orchestrates providing tasks to agents.
+      If agent fails to deliver, it retries or escalates.
+      Integrate all outputs. Conduct QA and compile final deliverable.
+      Ensure requirements met; provide executive summary and future recommendations.
+    expected_output:
+      format: markdown
+      contents:
+        - project_summary: "Executive summary"
+        - qa_checklist: "QA results"
+        - integration: "Testing log"
+        - deployment: "Readiness assessment"
+        - roadmap: "Maintenance/future enhancements"
+    handoff_to: client
+    async: true
