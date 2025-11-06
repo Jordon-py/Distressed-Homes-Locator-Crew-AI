@@ -29,7 +29,7 @@ def run():
     
     try:
         print("🚀 Starting Gangshit crew...")
-        crew = Gangshit().gangshit()
+        crew = Gangshit().gangshit_crew()
         result = crew.kickoff(inputs=inputs)
         print("✅ Crew execution completed!")
         print(f"📊 Result: {result}")
